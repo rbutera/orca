@@ -50,7 +50,9 @@ vi.mock('@/lib/connection-context', () => ({
 }))
 
 vi.mock('@/runtime/runtime-hooks-client', () => ({
-  checkRuntimeHooks: vi.fn().mockResolvedValue({ hasHooks: false, hooks: null, mayNeedUpdate: false })
+  checkRuntimeHooks: vi
+    .fn()
+    .mockResolvedValue({ hasHooks: false, hooks: null, mayNeedUpdate: false })
 }))
 
 vi.mock('@/runtime/runtime-rpc-client', () => ({
@@ -236,5 +238,39 @@ describe('launchWorkItemDirect', () => {
     expect(mocks.activateAndRevealWorktree).toHaveBeenCalled()
     expect(mocks.pasteDraftWhenAgentReady).not.toHaveBeenCalled()
     expect(mocks.toastError).toHaveBeenCalledWith('Could not build the agent launch command.')
+  })
+
+  it('does not launch a disabled saved agent even when another agent is available', async () => {
+    mocks.ensureDetectedAgents.mockResolvedValue(['codex', 'claude'])
+    mocks.store.settings = {
+      defaultTuiAgent: 'claude',
+      disabledTuiAgents: ['codex'],
+      agentCmdOverrides: {}
+    }
+    const { launchWorkItemDirect } = await import('./launch-work-item-direct')
+
+    await expect(
+      launchWorkItemDirect({
+        item: {
+          title: 'Fix failing checks',
+          url: 'https://github.com/acme/repo/pull/1',
+          type: 'issue',
+          number: 1,
+          pasteContent: 'Fix the failing checks.'
+        },
+        repoId: 'repo-1',
+        openModalFallback: mocks.openModalFallback,
+        launchSource: 'task_page',
+        agentOverride: 'codex',
+        promptDelivery: 'submit-after-ready'
+      })
+    ).resolves.toBe(false)
+
+    expect(mocks.createWorktree).toHaveBeenCalled()
+    expect(mocks.updateWorktreeMeta).not.toHaveBeenCalled()
+    expect(mocks.pasteDraftWhenAgentReady).not.toHaveBeenCalled()
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Selected agent is not available in the created workspace.'
+    )
   })
 })
