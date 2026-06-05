@@ -198,7 +198,7 @@ export const TERMINAL_GHOSTTY_IMPORT_SEARCH_ENTRIES: SettingsSearchEntry[] = [
 export const TERMINAL_WARP_IMPORT_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   {
     title: 'Import from Warp',
-    description: 'Import Warp YAML themes as Orca terminal themes.',
+    description: 'Import Warp themes as Orca terminal themes.',
     keywords: ['warp', 'import', 'terminal', 'theme', 'themes', 'yaml']
   }
 ]

@@ -91,7 +91,7 @@ export function WarpThemeImportModal({
         <DialogHeader>
           <DialogTitle className="text-sm">Import from Warp</DialogTitle>
           <DialogDescription className="text-xs">
-            Import Warp YAML themes as Orca terminal themes.
+            Import Warp themes as Orca terminal themes.
           </DialogDescription>
         </DialogHeader>
 
