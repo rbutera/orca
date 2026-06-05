@@ -7,6 +7,7 @@ const statMock = vi.hoisted(() => vi.fn())
 const getWarpThemeDirectoriesMock = vi.hoisted(() => vi.fn(() => ['/Users/alice/.warp/themes']))
 const parseWarpThemeYamlWithTimeoutMock = vi.hoisted(() => vi.fn())
 const showOpenDialogMock = vi.hoisted(() => vi.fn())
+const bundledThemesMock = vi.hoisted(() => [] as { label: string; content: string }[])
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromWebContents: vi.fn() },
@@ -25,6 +26,11 @@ vi.mock('./discovery', () => ({
 
 vi.mock('./parser-runner', () => ({
   parseWarpThemeYamlWithTimeout: parseWarpThemeYamlWithTimeoutMock
+}))
+
+vi.mock('./bundled-themes', () => ({
+  BUNDLED_WARP_THEME_SOURCE_LABEL: 'Warp bundled themes',
+  BUNDLED_WARP_THEMES: bundledThemesMock
 }))
 
 import { previewWarpThemeImport } from './index'
@@ -77,6 +83,7 @@ function mockStat(filePath: string) {
 describe('previewWarpThemeImport', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    bundledThemesMock.length = 0
     getWarpThemeDirectoriesMock.mockReturnValue(['/Users/alice/.warp/themes'])
     statMock.mockImplementation(mockStat)
     readFileMock.mockResolvedValue(VALID_THEME)
@@ -91,6 +98,49 @@ describe('previewWarpThemeImport', () => {
     expect(readFileMock.mock.calls.map(([filePath]) => path.basename(filePath as string))).toEqual([
       'a.yml',
       'z.yml'
+    ])
+  })
+
+  it('shows bundled themes when no local Warp theme folder exists', async () => {
+    bundledThemesMock.push({
+      label: 'Warp Dark.yaml',
+      content: VALID_THEME.replace('name: Duplicate', 'name: Warp Dark')
+    })
+    statMock.mockImplementation(() => {
+      throw new Error('missing local themes')
+    })
+
+    const preview = await previewWarpThemeImport({} as Store, { kind: 'auto' })
+
+    expect(preview.found).toBe(true)
+    expect(preview.sourceLabel).toBe('Warp bundled themes')
+    expect(preview.themes).toHaveLength(1)
+    expect(preview.themes[0]).toMatchObject({
+      id: 'warp:warp-dark',
+      name: 'Warp Dark',
+      sourceLabel: 'Warp bundled themes'
+    })
+    expect(readFileMock).not.toHaveBeenCalled()
+  })
+
+  it('combines bundled themes with local auto-discovered themes', async () => {
+    bundledThemesMock.push({
+      label: 'Warp Dark.yaml',
+      content: VALID_THEME.replace('name: Duplicate', 'name: Warp Dark')
+    })
+
+    const preview = await previewWarpThemeImport({} as Store, { kind: 'auto' })
+
+    expect(preview.sourceLabel).toBe('Warp themes')
+    expect(preview.themes.map((theme) => theme.name)).toEqual([
+      'Warp Dark',
+      'Duplicate',
+      'Duplicate'
+    ])
+    expect(preview.themes.map((theme) => theme.sourceLabel)).toEqual([
+      'Warp bundled themes',
+      'Local Warp themes',
+      'Local Warp themes'
     ])
   })
 
@@ -117,7 +167,10 @@ describe('previewWarpThemeImport', () => {
       path.join('/Users/alice/.warp/themes', 'standard', 'tokyo-night.yaml'),
       path.join('/Users/alice/.warp/themes', 'warp_bundled', 'dracula.yml')
     ])
-    expect(preview.themes.map((theme) => theme.sourceLabel)).toEqual(['themes', 'themes'])
+    expect(preview.themes.map((theme) => theme.sourceLabel)).toEqual([
+      'Local Warp themes',
+      'Local Warp themes'
+    ])
   })
 
   it('caps broad folder scans before walking unbounded child directories', async () => {

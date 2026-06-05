@@ -10,6 +10,7 @@ import type {
 import { makeCustomTerminalThemeSelection } from '../../shared/terminal-custom-themes'
 import { getWarpThemeDirectories } from './discovery'
 import { parseWarpThemeYamlWithTimeout } from './parser-runner'
+import { BUNDLED_WARP_THEMES, BUNDLED_WARP_THEME_SOURCE_LABEL } from './bundled-themes'
 import {
   compareThemeFileLabels,
   isYamlFile,
@@ -30,13 +31,29 @@ type ThemeSourceSelection =
       skippedFiles: WarpThemeImportSkippedFile[]
     }
 
-async function filesFromDirectory(directoryPath: string): Promise<ThemeSourceSelection> {
+async function filesFromDirectory(
+  directoryPath: string,
+  sourceLabelOverride?: string
+): Promise<ThemeSourceSelection> {
   const { sourceLabel, files, skippedFiles } = await scanWarpThemeDirectory(directoryPath)
-  return { canceled: false, sourceLabel, files, skippedFiles }
+  const effectiveSourceLabel = sourceLabelOverride ?? sourceLabel
+  return {
+    canceled: false,
+    sourceLabel: effectiveSourceLabel,
+    files: files.map((file) => ({ ...file, sourceLabel: effectiveSourceLabel })),
+    skippedFiles
+  }
 }
 
 async function filesFromAutoDirectories(): Promise<ThemeSourceSelection> {
+  const bundledFiles = BUNDLED_WARP_THEMES.map((theme) => ({
+    path: theme.label,
+    label: theme.label,
+    content: theme.content,
+    sourceLabel: BUNDLED_WARP_THEME_SOURCE_LABEL
+  }))
   const directories = getWarpThemeDirectories()
+  let localSelection: ThemeSourceSelection | null = null
   for (const directoryPath of directories) {
     try {
       const info = await stat(directoryPath)
@@ -46,12 +63,18 @@ async function filesFromAutoDirectories(): Promise<ThemeSourceSelection> {
     } catch {
       continue
     }
-    const selection = await filesFromDirectory(directoryPath)
+    const selection = await filesFromDirectory(directoryPath, 'Local Warp themes')
     if (!selection.canceled && (selection.files.length > 0 || selection.skippedFiles.length > 0)) {
-      return selection
+      localSelection = selection
+      break
     }
   }
-  return { canceled: false, sourceLabel: 'Warp themes', files: [], skippedFiles: [] }
+  return {
+    canceled: false,
+    sourceLabel: localSelection ? 'Warp themes' : BUNDLED_WARP_THEME_SOURCE_LABEL,
+    files: [...bundledFiles, ...(localSelection?.files ?? [])],
+    skippedFiles: localSelection?.skippedFiles ?? []
+  }
 }
 
 async function chooseThemeFile(webContents?: WebContents): Promise<ThemeSourceSelection> {
@@ -138,31 +161,35 @@ export async function previewWarpThemeImport(
 
   for (const file of selection.files) {
     let content: string
-    try {
-      const info = await stat(file.path)
-      if (!info.isFile()) {
-        skippedFiles.push({ label: file.label, reason: 'Not a file.' })
-        continue
-      }
-      if (info.size > MAX_THEME_FILE_BYTES) {
+    if (file.content !== undefined) {
+      content = file.content
+    } else {
+      try {
+        const info = await stat(file.path)
+        if (!info.isFile()) {
+          skippedFiles.push({ label: file.label, reason: 'Not a file.' })
+          continue
+        }
+        if (info.size > MAX_THEME_FILE_BYTES) {
+          skippedFiles.push({
+            label: file.label,
+            reason: `File is too large to import (${info.size} bytes, limit ${MAX_THEME_FILE_BYTES}).`
+          })
+          continue
+        }
+        content = await readFile(file.path, 'utf-8')
+      } catch {
         skippedFiles.push({
           label: file.label,
-          reason: `File is too large to import (${info.size} bytes, limit ${MAX_THEME_FILE_BYTES}).`
+          reason: sanitizeReadError('Could not read file.')
         })
         continue
       }
-      content = await readFile(file.path, 'utf-8')
-    } catch {
-      skippedFiles.push({
-        label: file.label,
-        reason: sanitizeReadError('Could not read file.')
-      })
-      continue
     }
 
     const parsed = await parseWarpThemeYamlWithTimeout(content, file.label, {
       importedAt,
-      sourceLabel: selection.sourceLabel
+      sourceLabel: file.sourceLabel ?? selection.sourceLabel
     })
     if (!parsed.ok) {
       skippedFiles.push({ label: file.label, reason: parsed.reason })
@@ -189,7 +216,7 @@ export async function previewWarpThemeImport(
     themes,
     skippedFiles,
     ...(themes.length === 0 && skippedFiles.length === 0
-      ? { error: 'No Warp theme YAML files found.' }
+      ? { error: 'No Warp theme files found.' }
       : {})
   }
 }

@@ -95,6 +95,25 @@ describe('parseWarpThemeYaml', () => {
     }
   })
 
+  it('uses a gradient endpoint as the terminal background', () => {
+    const result = parseWarpThemeYaml(
+      VALID_THEME.replace(
+        "background: '#1a1b26'",
+        'background:\n  top: "#002633"\n  bottom: "#000000"'
+      ).replace("accent: '#7aa2f7'", 'accent:\n  left: "#007972"\n  right: "#7b008f"'),
+      'cyber-wave.yaml'
+    )
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.theme.terminal.background).toBe('#002633')
+      expect(result.theme.unsupportedFeatures).toEqual([
+        'background gradient not supported',
+        'accent gradient not supported'
+      ])
+    }
+  })
+
   it('rejects non-object or unusable themes', () => {
     expect(parseWarpThemeYaml('- one\n- two', 'list.yaml')).toEqual({
       ok: false,

@@ -12,6 +12,8 @@ const YAML_EXTENSIONS = new Set(['.yaml', '.yml'])
 export type ThemeFileCandidate = {
   path: string
   label: string
+  content?: string
+  sourceLabel?: string
 }
 
 type DirectoryScanBudget = {

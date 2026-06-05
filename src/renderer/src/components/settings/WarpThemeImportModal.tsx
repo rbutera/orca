@@ -205,10 +205,8 @@ export function WarpThemeImportModal({
             </div>
           ) : (
             <div className="space-y-2 text-xs text-muted-foreground">
-              <p>{preview.error ?? 'No Warp themes found in the default location.'}</p>
-              {!desktopOnly ? (
-                <p>Choose a Warp theme YAML file or folder to import manually.</p>
-              ) : null}
+              <p>{preview.error ?? 'No Warp themes found in the selected source.'}</p>
+              {!desktopOnly ? <p>Choose a Warp theme file or folder to import manually.</p> : null}
             </div>
           )}
 

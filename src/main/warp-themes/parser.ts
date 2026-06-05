@@ -55,8 +55,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
 }
 
+function readColorValue(value: unknown): string | null {
+  const scalar = normalizeTerminalHexColor(value)
+  if (scalar) {
+    return scalar
+  }
+  if (!isRecord(value)) {
+    return null
+  }
+  return (
+    normalizeTerminalHexColor(value.top) ??
+    normalizeTerminalHexColor(value.bottom) ??
+    normalizeTerminalHexColor(value.left) ??
+    normalizeTerminalHexColor(value.right)
+  )
+}
+
 function readColor(input: Record<string, unknown>, key: string): string | null {
-  return normalizeTerminalHexColor(input[key])
+  return readColorValue(input[key])
 }
 
 function addWarpPalette(
@@ -100,6 +116,12 @@ function detectUnsupportedFeatures(input: Record<string, unknown>): string[] | u
   const unsupported = new Set<string>()
   if ('background_image' in input) {
     unsupported.add('background image not supported')
+  }
+  if (isRecord(input.background)) {
+    unsupported.add('background gradient not supported')
+  }
+  if (isRecord(input.accent)) {
+    unsupported.add('accent gradient not supported')
   }
   if ('background_gradient' in input || 'gradient' in input || 'gradients' in input) {
     unsupported.add('gradient not supported')
