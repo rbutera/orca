@@ -34,6 +34,7 @@ import {
 import { TERMINAL_APPEARANCE_SEARCH_ENTRIES } from './terminal-search'
 import { TerminalAppearanceSection } from './TerminalAppearanceSection'
 import type { UseGhosttyImportReturn } from './useGhosttyImport'
+import type { UseWarpThemeImportReturn } from './useWarpThemeImport'
 import { AppIconSelector } from './AppIconSelector'
 export { APPEARANCE_PANE_SEARCH_ENTRIES }
 
@@ -45,6 +46,7 @@ type AppearancePaneProps = {
   terminalFontSuggestions: string[]
   systemPrefersDark: boolean
   ghostty: UseGhosttyImportReturn
+  warpThemes: UseWarpThemeImportReturn
 }
 
 function ShortcutHintList({ combos }: { combos: string[][] }): React.JSX.Element {
@@ -73,7 +75,8 @@ export function AppearancePane({
   fontSuggestions,
   terminalFontSuggestions,
   systemPrefersDark,
-  ghostty
+  ghostty,
+  warpThemes
 }: AppearancePaneProps): React.JSX.Element {
   const searchQuery = useAppStore((state) => state.settingsSearchQuery)
   const zoomInKeyCombos = useShortcutKeyCombos('zoom.in')
@@ -169,6 +172,7 @@ export function AppearancePane({
         systemPrefersDark={systemPrefersDark}
         terminalFontSuggestions={terminalFontSuggestions}
         ghostty={ghostty}
+        warpThemes={warpThemes}
       />
     ) : null,
     matchesSettingsSearch(searchQuery, LAYOUT_ENTRIES) ? (

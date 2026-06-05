@@ -91,6 +91,7 @@ import { normalizeTaskProviderSettings } from '../shared/task-providers'
 import { normalizeOpenInApplications } from '../shared/open-in-applications'
 import { normalizeTerminalShortcutPolicy } from '../shared/keybindings'
 import { normalizeAppIconId } from '../shared/app-icon'
+import { normalizeTerminalCustomThemes } from '../shared/terminal-custom-themes'
 import {
   normalizeFeatureInteractions,
   type FeatureInteractionId
@@ -1893,6 +1894,9 @@ export class Store {
             terminalQuickCommands: normalizeTerminalQuickCommands(
               parsed.settings?.terminalQuickCommands
             ),
+            terminalCustomThemes: normalizeTerminalCustomThemes(
+              parsed.settings?.terminalCustomThemes
+            ),
             appIcon: normalizeAppIconId(parsed.settings?.appIcon),
             defaultTaskSource: taskProviderSettings.defaultTaskSource,
             visibleTaskProviders: taskProviderSettings.visibleTaskProviders,
@@ -3006,6 +3010,11 @@ export class Store {
     if ('terminalQuickCommands' in updates) {
       sanitizedUpdates.terminalQuickCommands = normalizeTerminalQuickCommands(
         updates.terminalQuickCommands
+      )
+    }
+    if ('terminalCustomThemes' in updates) {
+      sanitizedUpdates.terminalCustomThemes = normalizeTerminalCustomThemes(
+        updates.terminalCustomThemes
       )
     }
     if ('visibleTaskProviders' in updates || 'defaultTaskSource' in updates) {

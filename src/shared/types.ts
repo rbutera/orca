@@ -24,6 +24,7 @@ import type {
   SourceControlAiSettings
 } from './source-control-ai-types'
 import type { AgentKind, LaunchSource, RequestKind } from './telemetry-events'
+import type { TerminalCustomTheme } from './terminal-custom-themes'
 
 // Re-exported for backward compat with renderer call sites that import
 // `WorkspaceCreateTelemetrySource` from '../../../shared/types'.
@@ -1998,6 +1999,7 @@ export type GlobalSettings = {
   terminalDividerColorDark: string
   terminalUseSeparateLightTheme: boolean
   terminalThemeLight: string
+  terminalCustomThemes?: TerminalCustomTheme[]
   terminalDividerColorLight: string
   terminalInactivePaneOpacity: number
   terminalActivePaneOpacity: number

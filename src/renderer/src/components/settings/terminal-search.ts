@@ -195,6 +195,14 @@ export const TERMINAL_GHOSTTY_IMPORT_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   }
 ]
 
+export const TERMINAL_WARP_IMPORT_SEARCH_ENTRIES: SettingsSearchEntry[] = [
+  {
+    title: 'Import from Warp',
+    description: 'Import Warp YAML themes as Orca terminal themes.',
+    keywords: ['warp', 'import', 'terminal', 'theme', 'themes', 'yaml']
+  }
+]
+
 export const MANAGE_SESSIONS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   {
     title: 'Manage Sessions',
@@ -279,7 +287,8 @@ export const TERMINAL_APPEARANCE_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   ...TERMINAL_DARK_THEME_SEARCH_ENTRIES,
   ...TERMINAL_LIGHT_THEME_SEARCH_ENTRIES,
   ...TERMINAL_WINDOW_SEARCH_ENTRIES,
-  ...TERMINAL_GHOSTTY_IMPORT_SEARCH_ENTRIES
+  ...TERMINAL_GHOSTTY_IMPORT_SEARCH_ENTRIES,
+  ...TERMINAL_WARP_IMPORT_SEARCH_ENTRIES
 ]
 
 export function getTerminalPaneSearchEntries(platform: {

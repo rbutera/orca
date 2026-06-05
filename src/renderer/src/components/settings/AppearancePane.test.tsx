@@ -43,6 +43,24 @@ function createGhosttyStub() {
   }
 }
 
+function createWarpThemesStub() {
+  return {
+    open: false,
+    preview: null,
+    loading: false,
+    desktopOnly: false,
+    appliedCount: null,
+    applyError: null,
+    selectedThemeIds: new Set<string>(),
+    handleClick: vi.fn(),
+    handlePreviewSource: vi.fn(),
+    handleToggleTheme: vi.fn(),
+    handleToggleAll: vi.fn(),
+    handleApply: vi.fn(),
+    handleOpenChange: vi.fn()
+  }
+}
+
 async function renderAppearancePane(
   settings: GlobalSettings,
   updateSettings: (updates: Partial<GlobalSettings>) => void = vi.fn()
@@ -62,6 +80,7 @@ async function renderAppearancePane(
         terminalFontSuggestions={[]}
         systemPrefersDark={false}
         ghostty={createGhosttyStub() as never}
+        warpThemes={createWarpThemesStub() as never}
       />
     )
   })

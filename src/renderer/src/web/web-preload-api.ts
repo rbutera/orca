@@ -38,6 +38,7 @@ import { createE2EConfig } from '../../../shared/e2e-config'
 import { relativePathInsideRoot } from '../../../shared/cross-platform-path'
 import { toRuntimeWorktreeSelector } from '../runtime/runtime-worktree-selector'
 import { normalizeDisabledTuiAgents } from '../../../shared/tui-agent-selection'
+import { normalizeTerminalCustomThemes } from '../../../shared/terminal-custom-themes'
 import type { RateLimitState } from '../../../shared/rate-limit-types'
 import type { RuntimeStatus, RuntimeSyncWindowGraph } from '../../../shared/runtime-types'
 import {
@@ -440,6 +441,14 @@ function createWebPreloadApi(): Partial<PreloadApi> {
         return next
       },
       listFonts: () => Promise.resolve([]),
+      previewWarpThemeImport: () =>
+        Promise.resolve({
+          found: false,
+          desktopOnly: true,
+          themes: [],
+          skippedFiles: [],
+          error: 'Warp theme import is available in the desktop app.'
+        }),
       onChanged: () => noopUnsubscribe
     } satisfies Partial<WebSettingsApi> as unknown as WebSettingsApi,
     keybindings: createWebKeybindingsApi(),
@@ -2510,6 +2519,9 @@ function mergeSettings(base: GlobalSettings, updates: Partial<GlobalSettings>): 
     } as GlobalSettings['githubProjects'],
     disabledTuiAgents: normalizeDisabledTuiAgents(
       updates.disabledTuiAgents ?? base.disabledTuiAgents
+    ),
+    terminalCustomThemes: normalizeTerminalCustomThemes(
+      updates.terminalCustomThemes ?? base.terminalCustomThemes
     ),
     voice: {
       ...(base.voice ?? defaults.voice),

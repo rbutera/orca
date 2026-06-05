@@ -3,6 +3,7 @@ import type { GlobalSettings } from '../../../../shared/types'
 import { ColorField, ThemePicker } from './SettingsFormControls'
 import { SearchableSetting } from './SearchableSetting'
 import { TerminalSettingsPreview } from './TerminalSettingsPreview'
+import { getAvailableTerminalThemeOptions } from '@/lib/terminal-theme'
 
 type DarkTerminalThemeSectionProps = {
   settings: GlobalSettings
@@ -29,6 +30,8 @@ export function DarkTerminalThemeSection({
   updateSettings,
   previewFontFamily
 }: DarkTerminalThemeSectionProps): React.JSX.Element {
+  const themeOptions = getAvailableTerminalThemeOptions(settings)
+
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-6">
@@ -48,6 +51,7 @@ export function DarkTerminalThemeSection({
             label="Dark Theme"
             description="Choose the terminal theme used in dark mode."
             selectedTheme={settings.terminalThemeDark}
+            themeOptions={themeOptions}
             query={themeSearchDark}
             onQueryChange={setThemeSearchDark}
             onSelectTheme={(theme) => updateSettings({ terminalThemeDark: theme })}
@@ -87,6 +91,8 @@ export function LightTerminalThemeSection({
   updateSettings,
   previewFontFamily
 }: LightTerminalThemeSectionProps): React.JSX.Element {
+  const themeOptions = getAvailableTerminalThemeOptions(settings)
+
   return (
     <section className="space-y-4">
       <SearchableSetting
@@ -141,6 +147,7 @@ export function LightTerminalThemeSection({
                   label="Light Theme"
                   description="Choose the theme used when Orca is in light mode."
                   selectedTheme={settings.terminalThemeLight}
+                  themeOptions={themeOptions}
                   query={themeSearchLight}
                   onQueryChange={setThemeSearchLight}
                   onSelectTheme={(theme) => updateSettings({ terminalThemeLight: theme })}

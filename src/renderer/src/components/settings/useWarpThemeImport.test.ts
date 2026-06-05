@@ -1,0 +1,203 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { GlobalSettings } from '../../../../shared/types'
+import type { WarpThemeImportPreview } from '../../../../shared/terminal-custom-themes'
+
+const mockStateValues: unknown[] = []
+let mockStateIndex = 0
+
+const baseSettings: GlobalSettings = {
+  terminalCustomThemes: [
+    {
+      id: 'warp:existing',
+      name: 'Existing',
+      source: 'warp',
+      mode: 'dark',
+      terminal: { background: '#000000', foreground: '#ffffff', black: '#111111' },
+      importedAt: '2026-06-01T00:00:00.000Z'
+    }
+  ]
+} as GlobalSettings
+
+function resetMockState() {
+  mockStateIndex = 0
+}
+
+vi.mock('react', async () => {
+  const actual = await vi.importActual<typeof import('react')>('react') // eslint-disable-line @typescript-eslint/consistent-type-imports -- vi.importActual requires inline import()
+  return {
+    ...actual,
+    useEffect: (effect: () => void | (() => void)) => {
+      void effect()
+    },
+    useRef: (initial: unknown) => ({ current: initial }),
+    useState: (initial: unknown) => {
+      const i = mockStateIndex++
+      if (mockStateValues[i] === undefined) {
+        mockStateValues[i] = typeof initial === 'function' ? initial() : initial
+      }
+      const setter = (v: unknown) => {
+        mockStateValues[i] = typeof v === 'function' ? v(mockStateValues[i]) : v
+      }
+      return [mockStateValues[i], setter]
+    }
+  }
+})
+
+import { useWarpThemeImport } from './useWarpThemeImport'
+
+describe('useWarpThemeImport', () => {
+  beforeEach(() => {
+    mockStateValues.length = 0
+    resetMockState()
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('does not preview Warp themes on mount', () => {
+    const previewMock = vi.fn()
+    vi.stubGlobal('window', {
+      api: { settings: { previewWarpThemeImport: previewMock } }
+    })
+
+    useWarpThemeImport(vi.fn(), baseSettings)
+
+    expect(previewMock).not.toHaveBeenCalled()
+  })
+
+  it('previews on click and merges selected themes into settings', async () => {
+    const previewResponse: WarpThemeImportPreview = {
+      found: true,
+      sourceLabel: 'themes',
+      skippedFiles: [],
+      themes: [
+        {
+          id: 'warp:tokyo-night',
+          selectionValue: 'custom:warp:tokyo-night',
+          name: 'Tokyo Night',
+          source: 'warp',
+          mode: 'dark',
+          terminal: { background: '#1a1b26', foreground: '#c0caf5', black: '#15161e' },
+          importedAt: '2026-06-05T00:00:00.000Z',
+          sourceLabel: 'themes'
+        }
+      ]
+    }
+    const previewMock = vi.fn().mockResolvedValue(previewResponse)
+    vi.stubGlobal('window', {
+      api: { settings: { previewWarpThemeImport: previewMock } }
+    })
+    const updateSettings = vi.fn()
+
+    let warp = useWarpThemeImport(updateSettings, baseSettings)
+    await warp.handleClick()
+    expect(previewMock).toHaveBeenCalledWith({ kind: 'auto' })
+
+    resetMockState()
+    warp = useWarpThemeImport(updateSettings, baseSettings)
+    expect(warp.open).toBe(true)
+    expect(warp.selectedThemeIds.has('warp:tokyo-night')).toBe(true)
+
+    await warp.handleApply()
+
+    expect(updateSettings).toHaveBeenCalledWith({
+      terminalCustomThemes: [
+        expect.objectContaining({ id: 'warp:existing' }),
+        expect.objectContaining({ id: 'warp:tokyo-night', name: 'Tokyo Night' })
+      ]
+    })
+  })
+
+  it('does not apply when no themes are selected', async () => {
+    const previewResponse: WarpThemeImportPreview = {
+      found: true,
+      themes: [
+        {
+          id: 'warp:tokyo-night',
+          selectionValue: 'custom:warp:tokyo-night',
+          name: 'Tokyo Night',
+          source: 'warp',
+          mode: 'dark',
+          terminal: { background: '#1a1b26', foreground: '#c0caf5', black: '#15161e' },
+          importedAt: '2026-06-05T00:00:00.000Z'
+        }
+      ],
+      skippedFiles: []
+    }
+    vi.stubGlobal('window', {
+      api: { settings: { previewWarpThemeImport: vi.fn().mockResolvedValue(previewResponse) } }
+    })
+    const updateSettings = vi.fn()
+
+    let warp = useWarpThemeImport(updateSettings, baseSettings)
+    await warp.handleClick()
+    resetMockState()
+    warp = useWarpThemeImport(updateSettings, baseSettings)
+    warp.handleToggleAll(false)
+    resetMockState()
+    warp = useWarpThemeImport(updateSettings, baseSettings)
+    await warp.handleApply()
+
+    expect(updateSettings).not.toHaveBeenCalled()
+  })
+
+  it('toggles only provided visible theme ids when filtering', async () => {
+    const previewResponse: WarpThemeImportPreview = {
+      found: true,
+      themes: [
+        {
+          id: 'warp:visible',
+          selectionValue: 'custom:warp:visible',
+          name: 'Visible',
+          source: 'warp',
+          mode: 'dark',
+          terminal: { background: '#000000', foreground: '#ffffff', black: '#111111' },
+          importedAt: '2026-06-05T00:00:00.000Z'
+        },
+        {
+          id: 'warp:hidden',
+          selectionValue: 'custom:warp:hidden',
+          name: 'Hidden',
+          source: 'warp',
+          mode: 'dark',
+          terminal: { background: '#000000', foreground: '#ffffff', black: '#222222' },
+          importedAt: '2026-06-05T00:00:00.000Z'
+        }
+      ],
+      skippedFiles: []
+    }
+    vi.stubGlobal('window', {
+      api: { settings: { previewWarpThemeImport: vi.fn().mockResolvedValue(previewResponse) } }
+    })
+
+    let warp = useWarpThemeImport(vi.fn(), baseSettings)
+    await warp.handleClick()
+    resetMockState()
+    warp = useWarpThemeImport(vi.fn(), baseSettings)
+    warp.handleToggleAll(false, ['warp:visible'])
+    resetMockState()
+    warp = useWarpThemeImport(vi.fn(), baseSettings)
+
+    expect(warp.selectedThemeIds.has('warp:visible')).toBe(false)
+    expect(warp.selectedThemeIds.has('warp:hidden')).toBe(true)
+  })
+
+  it('reports desktop-only preview responses', async () => {
+    const previewResponse: WarpThemeImportPreview = {
+      found: false,
+      desktopOnly: true,
+      themes: [],
+      skippedFiles: [],
+      error: 'Warp theme import is available in the desktop app.'
+    }
+    vi.stubGlobal('window', {
+      api: { settings: { previewWarpThemeImport: vi.fn().mockResolvedValue(previewResponse) } }
+    })
+
+    let warp = useWarpThemeImport(vi.fn(), baseSettings)
+    await warp.handleClick()
+    resetMockState()
+    warp = useWarpThemeImport(vi.fn(), baseSettings)
+
+    expect(warp.desktopOnly).toBe(true)
+  })
+})

@@ -110,6 +110,7 @@ export function TerminalSettingsPreview({
       effectiveMode,
       settings.terminalThemeDark,
       settings.terminalThemeLight,
+      settings.terminalCustomThemes,
       settings.terminalUseSeparateLightTheme,
       settings.terminalDividerColorDark,
       settings.terminalDividerColorLight,

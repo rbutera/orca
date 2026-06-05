@@ -7,7 +7,7 @@ import { ScrollArea } from '../ui/scroll-area'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Check, ChevronsUpDown, CircleX } from 'lucide-react'
-import { BUILTIN_TERMINAL_THEME_NAMES, normalizeColor } from '@/lib/terminal-theme'
+import { normalizeColor, type TerminalThemeOption } from '@/lib/terminal-theme'
 import { MAX_THEME_RESULTS } from './SettingsConstants'
 import { cn } from '@/lib/utils'
 
@@ -235,6 +235,7 @@ type ThemePickerProps = {
   label: string
   description: string
   selectedTheme: string
+  themeOptions: TerminalThemeOption[]
   query: string
   onQueryChange: (value: string) => void
   onSelectTheme: (theme: string) => void
@@ -276,14 +277,32 @@ export function ThemePicker({
   label,
   description,
   selectedTheme,
+  themeOptions,
   query,
   onQueryChange,
   onSelectTheme
 }: ThemePickerProps): React.JSX.Element {
   const normalizedQuery = query.trim().toLowerCase()
-  const filteredThemes = BUILTIN_TERMINAL_THEME_NAMES.filter((theme) =>
-    theme.toLowerCase().includes(normalizedQuery)
-  ).slice(0, MAX_THEME_RESULTS)
+  const matchingThemes = themeOptions.filter((theme) =>
+    `${theme.label} ${theme.sourceLabel ?? ''}`.toLowerCase().includes(normalizedQuery)
+  )
+  const selectedThemeLabel =
+    themeOptions.find((option) => option.value === selectedTheme)?.label ?? selectedTheme
+  const groupedThemes = [
+    {
+      label: 'Built-in',
+      themes: matchingThemes
+        .filter((theme) => theme.group === 'built-in')
+        .slice(0, MAX_THEME_RESULTS)
+    },
+    {
+      label: 'Imported',
+      themes: matchingThemes
+        .filter((theme) => theme.group === 'imported')
+        .slice(0, MAX_THEME_RESULTS)
+    }
+  ].filter((group) => group.themes.length > 0)
+  const visibleThemeCount = groupedThemes.reduce((sum, group) => sum + group.themes.length, 0)
 
   return (
     <div className="space-y-3">
@@ -294,39 +313,73 @@ export function ThemePicker({
       <Input
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
-        placeholder="Search builtin themes"
+        placeholder="Search terminal themes"
       />
       <div className="rounded-lg border border-border/50">
         <div className="flex items-center justify-between border-b border-border/50 px-3 py-2 text-xs text-muted-foreground">
-          <span>Selected: {selectedTheme}</span>
+          <span>Selected: {selectedThemeLabel}</span>
           <span>
-            Showing {filteredThemes.length}
-            {normalizedQuery
-              ? ` matching "${query.trim()}"`
-              : ` of ${BUILTIN_TERMINAL_THEME_NAMES.length}`}
+            Showing {visibleThemeCount}
+            {normalizedQuery ? ` matching "${query.trim()}"` : ` of ${themeOptions.length}`}
           </span>
         </div>
         <ScrollArea className="h-64">
           <div className="space-y-1 p-2">
-            {filteredThemes.map((theme) => (
-              <button
-                key={theme}
-                onClick={() => onSelectTheme(theme)}
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                  selectedTheme === theme
-                    ? 'bg-accent font-medium text-accent-foreground'
-                    : 'hover:bg-muted/60'
-                }`}
-              >
-                <span className="truncate">{theme}</span>
-                {selectedTheme === theme ? (
-                  <span className="ml-3 shrink-0 text-[11px] uppercase tracking-[0.16em]">
-                    Current
-                  </span>
-                ) : null}
-              </button>
+            {groupedThemes.map((group) => (
+              <div key={group.label} className="space-y-1">
+                <p className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+                  {group.label}
+                </p>
+                {group.themes.map((theme) => (
+                  <button
+                    key={theme.value}
+                    onClick={() => onSelectTheme(theme.value)}
+                    className={cn(
+                      'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                      selectedTheme === theme.value
+                        ? 'bg-accent font-medium text-accent-foreground'
+                        : 'hover:bg-accent'
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{theme.label}</span>
+                      {theme.sourceLabel ? (
+                        <span className="block truncate text-[11px] font-normal text-muted-foreground">
+                          Imported from {theme.sourceLabel}
+                          {theme.mode && theme.mode !== 'unknown' ? ` · ${theme.mode}` : ''}
+                        </span>
+                      ) : null}
+                    </span>
+                    {theme.group === 'imported' && theme.previewTheme ? (
+                      <span className="flex shrink-0 overflow-hidden rounded-sm border border-border/60">
+                        {[
+                          theme.previewTheme.black,
+                          theme.previewTheme.red,
+                          theme.previewTheme.green,
+                          theme.previewTheme.yellow,
+                          theme.previewTheme.blue,
+                          theme.previewTheme.magenta,
+                          theme.previewTheme.cyan,
+                          theme.previewTheme.white
+                        ].map((color, index) => (
+                          <span
+                            key={index}
+                            className="h-3 w-2"
+                            style={{ backgroundColor: color ?? 'transparent' }}
+                          />
+                        ))}
+                      </span>
+                    ) : null}
+                    {selectedTheme === theme.value ? (
+                      <span className="shrink-0 text-[11px] uppercase tracking-[0.16em]">
+                        Current
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
             ))}
-            {filteredThemes.length === 0 ? (
+            {visibleThemeCount === 0 ? (
               <div className="px-3 py-6 text-sm text-muted-foreground">No themes found.</div>
             ) : null}
           </div>

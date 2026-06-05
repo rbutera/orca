@@ -11,7 +11,6 @@ import {
   fontFamilyHasKnownLigatures,
   resolveTerminalLigaturesEnabled
 } from '../../../../shared/terminal-ligatures'
-import { Button } from '../ui/button'
 import {
   FontAutocomplete,
   NumberField,
@@ -31,6 +30,7 @@ import {
   TERMINAL_LIGHT_THEME_SEARCH_ENTRIES,
   TERMINAL_PANE_APPEARANCE_SEARCH_ENTRIES,
   TERMINAL_TYPOGRAPHY_SEARCH_ENTRIES,
+  TERMINAL_WARP_IMPORT_SEARCH_ENTRIES,
   TERMINAL_WINDOW_SEARCH_ENTRIES
 } from './terminal-search'
 import { DarkTerminalThemeSection, LightTerminalThemeSection } from './TerminalThemeSections'
@@ -39,7 +39,10 @@ import { TerminalSettingsPreview } from './TerminalSettingsPreview'
 import { TerminalFontSizeSetting } from './TerminalFontSizeSetting'
 import { GhosttyImportModal } from './GhosttyImportModal'
 import type { UseGhosttyImportReturn } from './useGhosttyImport'
-import ghosttyIcon from '../../../../../resources/ghostty.svg'
+import { WarpThemeImportModal } from './WarpThemeImportModal'
+import type { UseWarpThemeImportReturn } from './useWarpThemeImport'
+import { isWebClientLocation } from '@/hooks/useSettingsNavigationMetadata'
+import { TerminalThemeImportActions } from './TerminalThemeImportActions'
 
 type TerminalAppearanceSectionProps = {
   settings: GlobalSettings
@@ -47,6 +50,7 @@ type TerminalAppearanceSectionProps = {
   systemPrefersDark: boolean
   terminalFontSuggestions: string[]
   ghostty: UseGhosttyImportReturn
+  warpThemes: UseWarpThemeImportReturn
 }
 
 export function TerminalAppearanceSection({
@@ -54,7 +58,8 @@ export function TerminalAppearanceSection({
   updateSettings,
   systemPrefersDark,
   terminalFontSuggestions,
-  ghostty
+  ghostty,
+  warpThemes
 }: TerminalAppearanceSectionProps): React.JSX.Element {
   const searchQuery = useAppStore((state) => state.settingsSearchQuery)
   const [themeSearchDark, setThemeSearchDark] = useState('')
@@ -62,9 +67,12 @@ export function TerminalAppearanceSection({
   // Why: hover preview lets the font picker update the sample without committing a setting.
   const [previewFontFamily, setPreviewFontFamily] = useState<string | null>(null)
   const paneStyleOptions = resolvePaneStyleOptions(settings)
+  const showWarpThemeImport = !isWebClientLocation()
 
   const visibleSections = [
     matchesSettingsSearch(searchQuery, TERMINAL_GHOSTTY_IMPORT_SEARCH_ENTRIES) ||
+    (showWarpThemeImport &&
+      matchesSettingsSearch(searchQuery, TERMINAL_WARP_IMPORT_SEARCH_ENTRIES)) ||
     matchesSettingsSearch(searchQuery, TERMINAL_TYPOGRAPHY_SEARCH_ENTRIES) ? (
       <section key="typography" className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-3">
@@ -73,15 +81,11 @@ export function TerminalAppearanceSection({
               title="Terminal Typography"
               description="Default terminal typography for new panes and live updates."
             />
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => void ghostty.handleClick()}
-            >
-              <img src={ghosttyIcon} alt="" aria-hidden="true" className="size-4" />
-              Import from Ghostty
-            </Button>
+            <TerminalThemeImportActions
+              ghostty={ghostty}
+              warpThemes={warpThemes}
+              showWarpThemeImport={showWarpThemeImport}
+            />
           </div>
 
           <div className="divide-y divide-border/40">
@@ -383,6 +387,22 @@ export function TerminalAppearanceSection({
         applied={ghostty.applied}
         applyError={ghostty.applyError}
       />
+      {showWarpThemeImport ? (
+        <WarpThemeImportModal
+          open={warpThemes.open}
+          preview={warpThemes.preview}
+          loading={warpThemes.loading}
+          desktopOnly={warpThemes.desktopOnly}
+          appliedCount={warpThemes.appliedCount}
+          applyError={warpThemes.applyError}
+          selectedThemeIds={warpThemes.selectedThemeIds}
+          handlePreviewSource={warpThemes.handlePreviewSource}
+          handleToggleTheme={warpThemes.handleToggleTheme}
+          handleToggleAll={warpThemes.handleToggleAll}
+          handleApply={warpThemes.handleApply}
+          handleOpenChange={warpThemes.handleOpenChange}
+        />
+      ) : null}
     </div>
   )
 }

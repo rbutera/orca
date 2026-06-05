@@ -125,6 +125,12 @@ vi.mock('./GhosttyImportModal', () => ({
   }
 }))
 
+vi.mock('./WarpThemeImportModal', () => ({
+  WarpThemeImportModal: function WarpThemeImportModal() {
+    return null
+  }
+}))
+
 vi.mock('@/lib/terminal-theme', () => ({
   clampNumber: (v: number, min: number, max: number) => Math.max(min, Math.min(max, v)),
   resolveEffectiveTerminalAppearance: () => ({
@@ -150,6 +156,27 @@ const ghosttyMock = {
   applied: true,
   applyError: null,
   handleClick: vi.fn(),
+  handleApply: vi.fn(),
+  handleOpenChange: vi.fn()
+}
+
+const warpThemesMock = {
+  open: true,
+  preview: {
+    found: true,
+    sourceLabel: 'themes',
+    themes: [],
+    skippedFiles: []
+  },
+  loading: false,
+  desktopOnly: false,
+  appliedCount: null,
+  applyError: null,
+  selectedThemeIds: new Set<string>(),
+  handleClick: vi.fn(),
+  handlePreviewSource: vi.fn(),
+  handleToggleTheme: vi.fn(),
+  handleToggleAll: vi.fn(),
   handleApply: vi.fn(),
   handleOpenChange: vi.fn()
 }
@@ -197,6 +224,10 @@ function findButtons(node: unknown): { text: string; onClick: (() => void) | und
     }
     const el = n as ReactElementLike
     const typeName = typeof el.type === 'function' ? el.type.name : String(el.type)
+    if (typeName === 'TerminalThemeImportActions') {
+      traverse((el.type as (props: Record<string, unknown>) => unknown)(el.props))
+      return
+    }
     if (typeName === 'Button') {
       const text = extractText(el.props.children)
       buttons.push({ text, onClick: el.props.onClick as (() => void) | undefined })
@@ -234,10 +265,36 @@ function findGhosttyImportModal(node: unknown): ReactElementLike | null {
   return null
 }
 
+function findWarpThemeImportModal(node: unknown): ReactElementLike | null {
+  if (node == null) {
+    return null
+  }
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findWarpThemeImportModal(child)
+      if (found) {
+        return found
+      }
+    }
+    return null
+  }
+  const el = node as ReactElementLike
+  const typeName = typeof el.type === 'function' ? el.type.name : String(el.type)
+  if (typeName === 'WarpThemeImportModal') {
+    return el
+  }
+  if (el.props?.children) {
+    return findWarpThemeImportModal(el.props.children)
+  }
+  return null
+}
+
 describe('TerminalAppearanceSection ghostty import wiring', () => {
   beforeEach(() => {
     mockStateValues.length = 0
     resetMockState()
+    vi.unstubAllGlobals()
+    vi.stubGlobal('window', { location: { pathname: '/index.html' } })
     vi.clearAllMocks()
   })
 
@@ -247,7 +304,8 @@ describe('TerminalAppearanceSection ghostty import wiring', () => {
       updateSettings: () => {},
       systemPrefersDark: true,
       terminalFontSuggestions: [],
-      ghostty: ghosttyMock
+      ghostty: ghosttyMock,
+      warpThemes: warpThemesMock
     })
 
     const buttons = findButtons(element)
@@ -258,13 +316,52 @@ describe('TerminalAppearanceSection ghostty import wiring', () => {
     expect(ghosttyMock.handleClick).toHaveBeenCalled()
   })
 
+  it('renders the Import from Warp button with terminal appearance controls', () => {
+    const element = TerminalAppearanceSection({
+      settings: {} as never,
+      updateSettings: () => {},
+      systemPrefersDark: true,
+      terminalFontSuggestions: [],
+      ghostty: ghosttyMock,
+      warpThemes: warpThemesMock
+    })
+
+    const buttons = findButtons(element)
+    const importButton = buttons.find((b) => b.text === 'Import from Warp')
+    expect(importButton).toBeDefined()
+
+    importButton?.onClick?.()
+    expect(warpThemesMock.handleClick).toHaveBeenCalled()
+  })
+
+  it('hides the Warp import affordance on paired web clients', () => {
+    vi.stubGlobal('window', {
+      __ORCA_WEB_CLIENT__: true,
+      location: { pathname: '/web-index.html' }
+    })
+
+    const element = TerminalAppearanceSection({
+      settings: {} as never,
+      updateSettings: () => {},
+      systemPrefersDark: true,
+      terminalFontSuggestions: [],
+      ghostty: ghosttyMock,
+      warpThemes: warpThemesMock
+    })
+
+    const buttons = findButtons(element)
+    expect(buttons.some((button) => button.text === 'Import from Warp')).toBe(false)
+    expect(findWarpThemeImportModal(element)).toBeNull()
+  })
+
   it('passes hook state to GhosttyImportModal', () => {
     const element = TerminalAppearanceSection({
       settings: {} as never,
       updateSettings: () => {},
       systemPrefersDark: true,
       terminalFontSuggestions: [],
-      ghostty: ghosttyMock
+      ghostty: ghosttyMock,
+      warpThemes: warpThemesMock
     })
 
     const modal = findGhosttyImportModal(element)
@@ -275,5 +372,25 @@ describe('TerminalAppearanceSection ghostty import wiring', () => {
     expect(modal?.props.applied).toBe(ghosttyMock.applied)
     expect(modal?.props.onApply).toBe(ghosttyMock.handleApply)
     expect(modal?.props.onOpenChange).toBe(ghosttyMock.handleOpenChange)
+  })
+
+  it('passes hook state to WarpThemeImportModal', () => {
+    const element = TerminalAppearanceSection({
+      settings: {} as never,
+      updateSettings: () => {},
+      systemPrefersDark: true,
+      terminalFontSuggestions: [],
+      ghostty: ghosttyMock,
+      warpThemes: warpThemesMock
+    })
+
+    const modal = findWarpThemeImportModal(element)
+    expect(modal).not.toBeNull()
+    expect(modal?.props.open).toBe(warpThemesMock.open)
+    expect(modal?.props.preview).toEqual(warpThemesMock.preview)
+    expect(modal?.props.loading).toBe(warpThemesMock.loading)
+    expect(modal?.props.desktopOnly).toBe(false)
+    expect(modal?.props.handleApply).toBe(warpThemesMock.handleApply)
+    expect(modal?.props.handleOpenChange).toBe(warpThemesMock.handleOpenChange)
   })
 })

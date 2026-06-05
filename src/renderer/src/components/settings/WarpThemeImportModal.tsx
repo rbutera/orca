@@ -1,0 +1,261 @@
+import { useMemo, useState } from 'react'
+import { FileUp, FolderOpen, Loader2 } from 'lucide-react'
+import type { WarpThemeImportPreviewTheme } from '../../../../shared/terminal-custom-themes'
+import { Button } from '../ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../ui/dialog'
+import { Input } from '../ui/input'
+import { ScrollArea } from '../ui/scroll-area'
+import { SettingsBadge } from './SettingsFormControls'
+import type { UseWarpThemeImportReturn } from './useWarpThemeImport'
+import { cn } from '@/lib/utils'
+
+type WarpThemeImportModalProps = Pick<
+  UseWarpThemeImportReturn,
+  | 'open'
+  | 'preview'
+  | 'loading'
+  | 'desktopOnly'
+  | 'appliedCount'
+  | 'applyError'
+  | 'selectedThemeIds'
+  | 'handlePreviewSource'
+  | 'handleToggleTheme'
+  | 'handleToggleAll'
+  | 'handleApply'
+  | 'handleOpenChange'
+>
+
+function ThemeSwatches({ theme }: { theme: WarpThemeImportPreviewTheme }): React.JSX.Element {
+  const colors = [
+    theme.terminal.black,
+    theme.terminal.red,
+    theme.terminal.green,
+    theme.terminal.yellow,
+    theme.terminal.blue,
+    theme.terminal.magenta,
+    theme.terminal.cyan,
+    theme.terminal.white
+  ]
+  return (
+    <span className="flex shrink-0 overflow-hidden rounded-sm border border-border/60">
+      {colors.map((color, index) => (
+        <span
+          key={index}
+          className="h-3 w-2.5"
+          style={{ backgroundColor: color ?? 'transparent' }}
+        />
+      ))}
+    </span>
+  )
+}
+
+export function WarpThemeImportModal({
+  open,
+  preview,
+  loading,
+  desktopOnly,
+  appliedCount,
+  applyError,
+  selectedThemeIds,
+  handlePreviewSource,
+  handleToggleTheme,
+  handleToggleAll,
+  handleApply,
+  handleOpenChange
+}: WarpThemeImportModalProps): React.JSX.Element {
+  const [query, setQuery] = useState('')
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredThemes = useMemo(
+    () =>
+      (preview?.themes ?? []).filter((theme) =>
+        `${theme.name} ${theme.sourceLabel ?? ''}`.toLowerCase().includes(normalizedQuery)
+      ),
+    [normalizedQuery, preview?.themes]
+  )
+  const allVisibleSelected =
+    filteredThemes.length > 0 && filteredThemes.every((theme) => selectedThemeIds.has(theme.id))
+  const filteredThemeIds = filteredThemes.map((theme) => theme.id)
+  const selectedCount = selectedThemeIds.size
+  const skippedCount = preview?.skippedFiles.length ?? 0
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-2xl sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Import from Warp</DialogTitle>
+          <DialogDescription className="text-xs">
+            Import Warp YAML themes as Orca terminal themes.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {!desktopOnly ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={loading}
+                onClick={() => void handlePreviewSource({ kind: 'chooseFile' })}
+              >
+                <FileUp className="size-4" />
+                Choose File
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={loading}
+                onClick={() => void handlePreviewSource({ kind: 'chooseFolder' })}
+              >
+                <FolderOpen className="size-4" />
+                Choose Folder
+              </Button>
+            </div>
+          ) : null}
+
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading Warp themes...
+            </div>
+          ) : preview == null ? null : preview.found ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>
+                  Found {preview.themes.length} theme{preview.themes.length === 1 ? '' : 's'}
+                  {preview.sourceLabel ? ` in ${preview.sourceLabel}` : ''}
+                </span>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-foreground hover:underline"
+                  onClick={() => handleToggleAll(!allVisibleSelected, filteredThemeIds)}
+                >
+                  {allVisibleSelected ? 'Clear visible' : 'Select visible'}
+                </button>
+              </div>
+
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search Warp themes"
+              />
+
+              <div className="rounded-lg border border-border/50">
+                <ScrollArea className="h-72">
+                  <div className="space-y-1 p-2">
+                    {filteredThemes.map((theme) => {
+                      const selected = selectedThemeIds.has(theme.id)
+                      return (
+                        <button
+                          type="button"
+                          key={theme.id}
+                          aria-pressed={selected}
+                          onClick={() => handleToggleTheme(theme.id)}
+                          className={cn(
+                            'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors',
+                            selected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent'
+                          )}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              'flex size-4 shrink-0 items-center justify-center rounded-sm border text-[10px] leading-none',
+                              selected
+                                ? 'border-accent-foreground bg-accent-foreground text-accent'
+                                : 'border-border bg-background'
+                            )}
+                          >
+                            {selected ? '✓' : null}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="truncate text-sm font-medium">{theme.name}</span>
+                              {theme.mode !== 'unknown' ? (
+                                <SettingsBadge tone="muted">{theme.mode}</SettingsBadge>
+                              ) : null}
+                            </div>
+                            {theme.unsupportedFeatures?.length ? (
+                              <p className="truncate text-xs text-muted-foreground">
+                                {theme.unsupportedFeatures.join(', ')}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">Colors only</p>
+                            )}
+                          </div>
+                          <ThemeSwatches theme={theme} />
+                        </button>
+                      )
+                    })}
+                    {filteredThemes.length === 0 ? (
+                      <div className="px-3 py-6 text-sm text-muted-foreground">
+                        No themes found.
+                      </div>
+                    ) : null}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <p>{preview.error ?? 'No Warp themes found in the default location.'}</p>
+              {!desktopOnly ? (
+                <p>Choose a Warp theme YAML file or folder to import manually.</p>
+              ) : null}
+            </div>
+          )}
+
+          {!loading && preview && skippedCount > 0 ? (
+            <div className="rounded-lg border border-border/50 p-3">
+              <p className="mb-2 text-xs font-medium">Skipped files</p>
+              <ul className="scrollbar-sleek max-h-24 space-y-1 overflow-auto text-xs text-muted-foreground">
+                {preview.skippedFiles.slice(0, 8).map((file) => (
+                  <li key={`${file.label}:${file.reason}`} className="flex gap-2">
+                    <span className="shrink-0 font-medium text-foreground/80">{file.label}</span>
+                    <span>{file.reason}</span>
+                  </li>
+                ))}
+                {preview.skippedFiles.length > 8 ? (
+                  <li>{preview.skippedFiles.length - 8} more skipped files.</li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
+
+          {appliedCount !== null ? (
+            <p className="text-xs font-medium text-status-success">
+              Imported {appliedCount} Warp theme{appliedCount === 1 ? '' : 's'}.
+            </p>
+          ) : null}
+          {applyError ? <p className="text-xs text-destructive">{applyError}</p> : null}
+        </div>
+
+        <DialogFooter>
+          {appliedCount !== null ? (
+            <Button onClick={() => handleOpenChange(false)}>Done</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!preview?.found || selectedCount === 0 || loading}
+                onClick={() => void handleApply()}
+              >
+                Import {selectedCount > 0 ? selectedCount : ''} Theme
+                {selectedCount === 1 ? '' : 's'}
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

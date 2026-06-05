@@ -24,6 +24,7 @@ import { ShortcutsPane } from './ShortcutsPane'
 import { TerminalPane } from './TerminalPane'
 import { FloatingWorkspacePane } from './FloatingWorkspacePane'
 import { useGhosttyImport } from './useGhosttyImport'
+import { useWarpThemeImport } from './useWarpThemeImport'
 import { RepositoryPane } from './RepositoryPane'
 import { GitPane } from './GitPane'
 import { CommitMessageAiPane } from './CommitMessageAiPane'
@@ -229,6 +230,7 @@ function Settings(): React.JSX.Element {
   // Why: Appearance owns terminal visual controls, but the Ghostty import flow
   // still needs Settings-level state so the modal survives section remounts.
   const ghostty = useGhosttyImport(updateSettings, settings)
+  const warpThemes = useWarpThemeImport(updateSettings, settings)
   const [fontSuggestions, setFontSuggestions] = useState<string[]>(
     Array.from(new Set([DEFAULT_APP_FONT_FAMILY, ...getFallbackTerminalFonts()]))
   )
@@ -1151,6 +1153,7 @@ function Settings(): React.JSX.Element {
                       )}
                       systemPrefersDark={systemPrefersDark}
                       ghostty={ghostty}
+                      warpThemes={warpThemes}
                     />
                   ) : null}
                 </SettingsSection>
