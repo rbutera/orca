@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react'
 import { FileUp, FolderOpen, Loader2 } from 'lucide-react'
 import type { WarpThemeImportPreviewTheme } from '../../../../shared/terminal-custom-themes'
 import { Button } from '../ui/button'
@@ -10,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '../ui/dialog'
-import { Input } from '../ui/input'
 import { ScrollArea } from '../ui/scroll-area'
 import { SettingsBadge } from './SettingsFormControls'
 import type { UseWarpThemeImportReturn } from './useWarpThemeImport'
@@ -22,7 +20,6 @@ type WarpThemeImportModalProps = Pick<
   | 'preview'
   | 'loading'
   | 'desktopOnly'
-  | 'appliedCount'
   | 'applyError'
   | 'selectedThemeIds'
   | 'handlePreviewSource'
@@ -61,7 +58,6 @@ export function WarpThemeImportModal({
   preview,
   loading,
   desktopOnly,
-  appliedCount,
   applyError,
   selectedThemeIds,
   handlePreviewSource,
@@ -70,18 +66,8 @@ export function WarpThemeImportModal({
   handleApply,
   handleOpenChange
 }: WarpThemeImportModalProps): React.JSX.Element {
-  const [query, setQuery] = useState('')
-  const normalizedQuery = query.trim().toLowerCase()
-  const filteredThemes = useMemo(
-    () =>
-      (preview?.themes ?? []).filter((theme) =>
-        `${theme.name} ${theme.sourceLabel ?? ''}`.toLowerCase().includes(normalizedQuery)
-      ),
-    [normalizedQuery, preview?.themes]
-  )
-  const allVisibleSelected =
-    filteredThemes.length > 0 && filteredThemes.every((theme) => selectedThemeIds.has(theme.id))
-  const filteredThemeIds = filteredThemes.map((theme) => theme.id)
+  const themes = preview?.themes ?? []
+  const allSelected = themes.length > 0 && themes.every((theme) => selectedThemeIds.has(theme.id))
   const selectedCount = selectedThemeIds.size
   const skippedCount = preview?.skippedFiles.length ?? 0
 
@@ -136,22 +122,16 @@ export function WarpThemeImportModal({
                 <button
                   type="button"
                   className="text-xs font-medium text-foreground hover:underline"
-                  onClick={() => handleToggleAll(!allVisibleSelected, filteredThemeIds)}
+                  onClick={() => handleToggleAll(!allSelected)}
                 >
-                  {allVisibleSelected ? 'Clear visible' : 'Select visible'}
+                  {allSelected ? 'Clear all' : 'Select all'}
                 </button>
               </div>
-
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search Warp themes"
-              />
 
               <div className="rounded-lg border border-border/50">
                 <ScrollArea className="h-72">
                   <div className="space-y-1 p-2">
-                    {filteredThemes.map((theme) => {
+                    {themes.map((theme) => {
                       const selected = selectedThemeIds.has(theme.id)
                       return (
                         <button
@@ -194,11 +174,6 @@ export function WarpThemeImportModal({
                         </button>
                       )
                     })}
-                    {filteredThemes.length === 0 ? (
-                      <div className="px-3 py-6 text-sm text-muted-foreground">
-                        No themes found.
-                      </div>
-                    ) : null}
                   </div>
                 </ScrollArea>
               </div>
@@ -227,31 +202,20 @@ export function WarpThemeImportModal({
             </div>
           ) : null}
 
-          {appliedCount !== null ? (
-            <p className="text-xs font-medium text-status-success">
-              Imported {appliedCount} Warp theme{appliedCount === 1 ? '' : 's'}.
-            </p>
-          ) : null}
           {applyError ? <p className="text-xs text-destructive">{applyError}</p> : null}
         </div>
 
         <DialogFooter>
-          {appliedCount !== null ? (
-            <Button onClick={() => handleOpenChange(false)}>Done</Button>
-          ) : (
-            <>
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button
-                disabled={!preview?.found || selectedCount === 0 || loading}
-                onClick={() => void handleApply()}
-              >
-                Import {selectedCount > 0 ? selectedCount : ''} Theme
-                {selectedCount === 1 ? '' : 's'}
-              </Button>
-            </>
-          )}
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!preview?.found || selectedCount === 0 || loading}
+            onClick={() => void handleApply()}
+          >
+            Import {selectedCount > 0 ? selectedCount : ''} Theme
+            {selectedCount === 1 ? '' : 's'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

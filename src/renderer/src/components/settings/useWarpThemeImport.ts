@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { GlobalSettings } from '../../../../shared/types'
 import {
   normalizeTerminalCustomThemes,
@@ -13,13 +14,15 @@ export type UseWarpThemeImportReturn = {
   preview: WarpThemeImportPreview | null
   loading: boolean
   desktopOnly: boolean
-  appliedCount: number | null
   applyError: string | null
+  /** Bumps on each successful import so the theme picker can scroll to and
+   *  highlight the freshly-imported themes. */
+  importSignal: number
   selectedThemeIds: Set<string>
   handleClick: () => Promise<void>
   handlePreviewSource: (source: WarpThemeImportSource) => Promise<void>
   handleToggleTheme: (id: string) => void
-  handleToggleAll: (checked: boolean, themeIds?: string[]) => void
+  handleToggleAll: (checked: boolean) => void
   handleApply: () => Promise<void>
   handleOpenChange: (open: boolean) => void
 }
@@ -31,15 +34,14 @@ export function useWarpThemeImport(
   const [open, setOpen] = useState(false)
   const [preview, setPreview] = useState<WarpThemeImportPreview | null>(null)
   const [loading, setLoading] = useState(false)
-  const [appliedCount, setAppliedCount] = useState<number | null>(null)
   const [applyError, setApplyError] = useState<string | null>(null)
+  const [importSignal, setImportSignal] = useState(0)
   const [selectedThemeIds, setSelectedThemeIds] = useState<Set<string>>(() => new Set())
   const mountedRef = useMountedRef()
 
   async function handlePreviewSource(source: WarpThemeImportSource): Promise<void> {
     setLoading(true)
     setApplyError(null)
-    setAppliedCount(null)
     try {
       const result = await window.api.settings.previewWarpThemeImport(source)
       if (mountedRef.current) {
@@ -76,22 +78,9 @@ export function useWarpThemeImport(
     })
   }
 
-  function handleToggleAll(checked: boolean, themeIds?: string[]): void {
-    const targetIds = themeIds ?? preview?.themes.map((theme) => theme.id) ?? []
-    setSelectedThemeIds((current) => {
-      if (!themeIds) {
-        return new Set(checked ? targetIds : [])
-      }
-      const next = new Set(current)
-      for (const id of targetIds) {
-        if (checked) {
-          next.add(id)
-        } else {
-          next.delete(id)
-        }
-      }
-      return next
-    })
+  function handleToggleAll(checked: boolean): void {
+    const targetIds = preview?.themes.map((theme) => theme.id) ?? []
+    setSelectedThemeIds(new Set(checked ? targetIds : []))
   }
 
   async function handleApply(): Promise<void> {
@@ -113,9 +102,15 @@ export function useWarpThemeImport(
       await updateSettings({
         terminalCustomThemes: normalizeTerminalCustomThemes([...byId.values()])
       })
-      if (mountedRef.current) {
-        setAppliedCount(selectedThemes.length)
-      }
+      const count = selectedThemes.length
+      // Why: report success via a toast and dismiss the modal rather than
+      // leaving an "imported" state inside the dialog.
+      toast.success(`Imported ${count} Warp theme${count === 1 ? '' : 's'}`)
+      // Bump the signal so the theme picker scrolls to / highlights the
+      // newly-imported themes, which otherwise sit off-screen below the
+      // built-in list.
+      setImportSignal((value) => value + 1)
+      handleOpenChange(false)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to import Warp themes'
       if (mountedRef.current) {
@@ -129,7 +124,6 @@ export function useWarpThemeImport(
     if (!newOpen) {
       setPreview(null)
       setLoading(false)
-      setAppliedCount(null)
       setApplyError(null)
       setSelectedThemeIds(new Set())
     }
@@ -140,8 +134,8 @@ export function useWarpThemeImport(
     preview,
     loading,
     desktopOnly: Boolean(preview?.desktopOnly),
-    appliedCount,
     applyError,
+    importSignal,
     selectedThemeIds,
     handleClick,
     handlePreviewSource,

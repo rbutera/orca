@@ -239,6 +239,9 @@ type ThemePickerProps = {
   query: string
   onQueryChange: (value: string) => void
   onSelectTheme: (theme: string) => void
+  /** Bumps when themes are imported; scrolls the Imported group into view and
+   *  briefly highlights it so freshly-imported themes are easy to find. */
+  importedHighlightSignal?: number
 }
 
 type ColorFieldProps = {
@@ -280,8 +283,26 @@ export function ThemePicker({
   themeOptions,
   query,
   onQueryChange,
-  onSelectTheme
+  onSelectTheme,
+  importedHighlightSignal
 }: ThemePickerProps): React.JSX.Element {
+  const importedGroupRef = useRef<HTMLDivElement | null>(null)
+  const [highlightImported, setHighlightImported] = useState(false)
+
+  // Why: imported themes render below the built-in list inside a fixed-height
+  // scroll area, so after an import they sit off-screen. On each import signal,
+  // scroll the Imported group into view (bubbling through the inner scroll area
+  // and the settings page) and flash a highlight so it's easy to spot.
+  useEffect(() => {
+    if (!importedHighlightSignal) {
+      return
+    }
+    importedGroupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setHighlightImported(true)
+    const timer = setTimeout(() => setHighlightImported(false), 2000)
+    return () => clearTimeout(timer)
+  }, [importedHighlightSignal])
+
   const normalizedQuery = query.trim().toLowerCase()
   const matchingThemes = themeOptions.filter((theme) =>
     `${theme.label} ${theme.sourceLabel ?? ''}`.toLowerCase().includes(normalizedQuery)
@@ -325,60 +346,74 @@ export function ThemePicker({
         </div>
         <ScrollArea className="h-64">
           <div className="space-y-1 p-2">
-            {groupedThemes.map((group) => (
-              <div key={group.label} className="space-y-1">
-                <p className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-                  {group.label}
-                </p>
-                {group.themes.map((theme) => (
-                  <button
-                    key={theme.value}
-                    onClick={() => onSelectTheme(theme.value)}
-                    className={cn(
-                      'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors',
-                      selectedTheme === theme.value
-                        ? 'bg-accent font-medium text-accent-foreground'
-                        : 'hover:bg-accent'
-                    )}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate">{theme.label}</span>
-                      {theme.sourceLabel ? (
-                        <span className="block truncate text-[11px] font-normal text-muted-foreground">
-                          Imported from {theme.sourceLabel}
-                          {theme.mode && theme.mode !== 'unknown' ? ` · ${theme.mode}` : ''}
+            {groupedThemes.map((group) => {
+              const isImported = group.label === 'Imported'
+              return (
+                <div
+                  key={group.label}
+                  ref={isImported ? importedGroupRef : undefined}
+                  className={cn(
+                    'space-y-1 rounded-md transition-colors duration-500',
+                    isImported && highlightImported && 'bg-accent/40 ring-1 ring-accent'
+                  )}
+                >
+                  <p className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+                    {group.label}
+                  </p>
+                  {group.themes.map((theme) => (
+                    <button
+                      key={theme.value}
+                      onClick={() => onSelectTheme(theme.value)}
+                      className={cn(
+                        'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                        selectedTheme === theme.value
+                          ? 'bg-accent font-medium text-accent-foreground'
+                          : 'hover:bg-accent'
+                      )}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{theme.label}</span>
+                        {theme.sourceLabel ? (
+                          <span className="block truncate text-[11px] font-normal text-muted-foreground">
+                            Imported from {theme.sourceLabel}
+                            {theme.mode && theme.mode !== 'unknown' ? ` · ${theme.mode}` : ''}
+                          </span>
+                        ) : null}
+                      </span>
+                      {/* Why: hide swatches on the current row so the color grid
+                        doesn't shift left to make room for the "Current" label. */}
+                      {theme.group === 'imported' &&
+                      theme.previewTheme &&
+                      selectedTheme !== theme.value ? (
+                        <span className="flex shrink-0 overflow-hidden rounded-sm border border-border/60">
+                          {[
+                            theme.previewTheme.black,
+                            theme.previewTheme.red,
+                            theme.previewTheme.green,
+                            theme.previewTheme.yellow,
+                            theme.previewTheme.blue,
+                            theme.previewTheme.magenta,
+                            theme.previewTheme.cyan,
+                            theme.previewTheme.white
+                          ].map((color, index) => (
+                            <span
+                              key={index}
+                              className="h-3 w-2"
+                              style={{ backgroundColor: color ?? 'transparent' }}
+                            />
+                          ))}
                         </span>
                       ) : null}
-                    </span>
-                    {theme.group === 'imported' && theme.previewTheme ? (
-                      <span className="flex shrink-0 overflow-hidden rounded-sm border border-border/60">
-                        {[
-                          theme.previewTheme.black,
-                          theme.previewTheme.red,
-                          theme.previewTheme.green,
-                          theme.previewTheme.yellow,
-                          theme.previewTheme.blue,
-                          theme.previewTheme.magenta,
-                          theme.previewTheme.cyan,
-                          theme.previewTheme.white
-                        ].map((color, index) => (
-                          <span
-                            key={index}
-                            className="h-3 w-2"
-                            style={{ backgroundColor: color ?? 'transparent' }}
-                          />
-                        ))}
-                      </span>
-                    ) : null}
-                    {selectedTheme === theme.value ? (
-                      <span className="shrink-0 text-[11px] uppercase tracking-[0.16em]">
-                        Current
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            ))}
+                      {selectedTheme === theme.value ? (
+                        <span className="shrink-0 text-[11px] uppercase tracking-[0.16em]">
+                          Current
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              )
+            })}
             {visibleThemeCount === 0 ? (
               <div className="px-3 py-6 text-sm text-muted-foreground">No themes found.</div>
             ) : null}

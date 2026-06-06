@@ -1,8 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { GlobalSettings } from '../../../../shared/types'
-import { ColorField, ThemePicker } from './SettingsFormControls'
+import { ColorField, SettingsSubsectionHeader, ThemePicker } from './SettingsFormControls'
 import { SearchableSetting } from './SearchableSetting'
 import { TerminalSettingsPreview } from './TerminalSettingsPreview'
+import { WarpThemeImportButton } from './WarpThemeImportButton'
+import type { UseWarpThemeImportReturn } from './useWarpThemeImport'
 import { getAvailableTerminalThemeOptions } from '@/lib/terminal-theme'
 
 type DarkTerminalThemeSectionProps = {
@@ -12,6 +14,9 @@ type DarkTerminalThemeSectionProps = {
   setThemeSearchDark: Dispatch<SetStateAction<string>>
   updateSettings: (updates: Partial<GlobalSettings>) => void
   previewFontFamily: string | null
+  importedHighlightSignal: number
+  warpThemes: UseWarpThemeImportReturn
+  showWarpThemeImport: boolean
 }
 
 type LightTerminalThemeSectionProps = {
@@ -28,18 +33,24 @@ export function DarkTerminalThemeSection({
   themeSearchDark,
   setThemeSearchDark,
   updateSettings,
-  previewFontFamily
+  previewFontFamily,
+  importedHighlightSignal,
+  warpThemes,
+  showWarpThemeImport
 }: DarkTerminalThemeSectionProps): React.JSX.Element {
   const themeOptions = getAvailableTerminalThemeOptions(settings)
 
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-6">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">Dark Theme</h3>
-          <p className="text-xs text-muted-foreground">
-            Choose the theme used for terminal panes in dark mode.
-          </p>
+        {/* Why: Warp import produces terminal themes, so its button lives with
+            the theme pickers rather than in the Typography header. */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SettingsSubsectionHeader
+            title="Dark Theme"
+            description="Choose the theme used for terminal panes in dark mode."
+          />
+          {showWarpThemeImport ? <WarpThemeImportButton warpThemes={warpThemes} /> : null}
         </div>
 
         <SearchableSetting
@@ -55,6 +66,7 @@ export function DarkTerminalThemeSection({
             query={themeSearchDark}
             onQueryChange={setThemeSearchDark}
             onSelectTheme={(theme) => updateSettings({ terminalThemeDark: theme })}
+            importedHighlightSignal={importedHighlightSignal}
           />
         </SearchableSetting>
 

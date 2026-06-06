@@ -42,7 +42,7 @@ import type { UseGhosttyImportReturn } from './useGhosttyImport'
 import { WarpThemeImportModal } from './WarpThemeImportModal'
 import type { UseWarpThemeImportReturn } from './useWarpThemeImport'
 import { isWebClientLocation } from '@/hooks/useSettingsNavigationMetadata'
-import { TerminalThemeImportActions } from './TerminalThemeImportActions'
+import { GhosttyImportButton } from './GhosttyImportButton'
 
 type TerminalAppearanceSectionProps = {
   settings: GlobalSettings
@@ -71,8 +71,6 @@ export function TerminalAppearanceSection({
 
   const visibleSections = [
     matchesSettingsSearch(searchQuery, TERMINAL_GHOSTTY_IMPORT_SEARCH_ENTRIES) ||
-    (showWarpThemeImport &&
-      matchesSettingsSearch(searchQuery, TERMINAL_WARP_IMPORT_SEARCH_ENTRIES)) ||
     matchesSettingsSearch(searchQuery, TERMINAL_TYPOGRAPHY_SEARCH_ENTRIES) ? (
       <section key="typography" className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-3">
@@ -81,11 +79,7 @@ export function TerminalAppearanceSection({
               title="Terminal Typography"
               description="Default terminal typography for new panes and live updates."
             />
-            <TerminalThemeImportActions
-              ghostty={ghostty}
-              warpThemes={warpThemes}
-              showWarpThemeImport={showWarpThemeImport}
-            />
+            <GhosttyImportButton ghostty={ghostty} />
           </div>
 
           <div className="divide-y divide-border/40">
@@ -347,7 +341,9 @@ export function TerminalAppearanceSection({
     matchesSettingsSearch(searchQuery, TERMINAL_WINDOW_SEARCH_ENTRIES) ? (
       <TerminalWindowSection key="window" settings={settings} updateSettings={updateSettings} />
     ) : null,
-    matchesSettingsSearch(searchQuery, TERMINAL_DARK_THEME_SEARCH_ENTRIES) ? (
+    matchesSettingsSearch(searchQuery, TERMINAL_DARK_THEME_SEARCH_ENTRIES) ||
+    (showWarpThemeImport &&
+      matchesSettingsSearch(searchQuery, TERMINAL_WARP_IMPORT_SEARCH_ENTRIES)) ? (
       <DarkTerminalThemeSection
         key="dark-theme"
         settings={settings}
@@ -356,6 +352,9 @@ export function TerminalAppearanceSection({
         setThemeSearchDark={setThemeSearchDark}
         updateSettings={updateSettings}
         previewFontFamily={previewFontFamily}
+        importedHighlightSignal={warpThemes.importSignal}
+        warpThemes={warpThemes}
+        showWarpThemeImport={showWarpThemeImport}
       />
     ) : null,
     matchesSettingsSearch(searchQuery, TERMINAL_LIGHT_THEME_SEARCH_ENTRIES) ? (
@@ -393,7 +392,6 @@ export function TerminalAppearanceSection({
           preview={warpThemes.preview}
           loading={warpThemes.loading}
           desktopOnly={warpThemes.desktopOnly}
-          appliedCount={warpThemes.appliedCount}
           applyError={warpThemes.applyError}
           selectedThemeIds={warpThemes.selectedThemeIds}
           handlePreviewSource={warpThemes.handlePreviewSource}

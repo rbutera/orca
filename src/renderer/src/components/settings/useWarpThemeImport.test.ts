@@ -5,6 +5,9 @@ import type { WarpThemeImportPreview } from '../../../../shared/terminal-custom-
 const mockStateValues: unknown[] = []
 let mockStateIndex = 0
 
+const toastSuccess = vi.fn()
+vi.mock('sonner', () => ({ toast: { success: (msg: string) => toastSuccess(msg) } }))
+
 const baseSettings: GlobalSettings = {
   terminalCustomThemes: [
     {
@@ -105,6 +108,12 @@ describe('useWarpThemeImport', () => {
         expect.objectContaining({ id: 'warp:tokyo-night', name: 'Tokyo Night' })
       ]
     })
+    // Success is reported via a toast, and the modal closes itself.
+    expect(toastSuccess).toHaveBeenCalledWith('Imported 1 Warp theme')
+
+    resetMockState()
+    warp = useWarpThemeImport(updateSettings, baseSettings)
+    expect(warp.open).toBe(false)
   })
 
   it('does not apply when no themes are selected', async () => {
@@ -140,23 +149,23 @@ describe('useWarpThemeImport', () => {
     expect(updateSettings).not.toHaveBeenCalled()
   })
 
-  it('toggles only provided visible theme ids when filtering', async () => {
+  it('toggles every previewed theme id when selecting all', async () => {
     const previewResponse: WarpThemeImportPreview = {
       found: true,
       themes: [
         {
-          id: 'warp:visible',
-          selectionValue: 'custom:warp:visible',
-          name: 'Visible',
+          id: 'warp:one',
+          selectionValue: 'custom:warp:one',
+          name: 'One',
           source: 'warp',
           mode: 'dark',
           terminal: { background: '#000000', foreground: '#ffffff', black: '#111111' },
           importedAt: '2026-06-05T00:00:00.000Z'
         },
         {
-          id: 'warp:hidden',
-          selectionValue: 'custom:warp:hidden',
-          name: 'Hidden',
+          id: 'warp:two',
+          selectionValue: 'custom:warp:two',
+          name: 'Two',
           source: 'warp',
           mode: 'dark',
           terminal: { background: '#000000', foreground: '#ffffff', black: '#222222' },
@@ -173,12 +182,18 @@ describe('useWarpThemeImport', () => {
     await warp.handleClick()
     resetMockState()
     warp = useWarpThemeImport(vi.fn(), baseSettings)
-    warp.handleToggleAll(false, ['warp:visible'])
+    warp.handleToggleAll(false)
     resetMockState()
     warp = useWarpThemeImport(vi.fn(), baseSettings)
 
-    expect(warp.selectedThemeIds.has('warp:visible')).toBe(false)
-    expect(warp.selectedThemeIds.has('warp:hidden')).toBe(true)
+    expect(warp.selectedThemeIds.size).toBe(0)
+
+    warp.handleToggleAll(true)
+    resetMockState()
+    warp = useWarpThemeImport(vi.fn(), baseSettings)
+
+    expect(warp.selectedThemeIds.has('warp:one')).toBe(true)
+    expect(warp.selectedThemeIds.has('warp:two')).toBe(true)
   })
 
   it('reports desktop-only preview responses', async () => {
