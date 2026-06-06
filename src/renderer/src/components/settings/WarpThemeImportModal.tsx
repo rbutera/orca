@@ -75,7 +75,7 @@ export function WarpThemeImportModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-sm">Import from Warp</DialogTitle>
+          <DialogTitle className="text-sm">Import themes from Warp</DialogTitle>
           <DialogDescription className="text-xs">
             Import Warp themes as Orca terminal themes.
           </DialogDescription>

@@ -41,7 +41,7 @@ function findButtonTexts(node: unknown): string[] {
   const element = node as ReactElementLike
   const typeName = typeof element.type === 'function' ? element.type.name : String(element.type)
   if (typeName === 'WarpThemeImportButton') {
-    return ['Import from Warp']
+    return ['Import themes from Warp']
   }
   return findButtonTexts(element.props?.children)
 }
@@ -115,12 +115,12 @@ describe('DarkTerminalThemeSection Warp import affordance', () => {
   it('renders the Warp import button alongside the theme picker on desktop', () => {
     const element = renderDarkSection(true)
 
-    expect(findButtonTexts(element)).toContain('Import from Warp')
+    expect(findButtonTexts(element)).toContain('Import themes from Warp')
   })
 
   it('hides the Warp import button on paired web clients', () => {
     const element = renderDarkSection(false)
 
-    expect(findButtonTexts(element)).not.toContain('Import from Warp')
+    expect(findButtonTexts(element)).not.toContain('Import themes from Warp')
   })
 })

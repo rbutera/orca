@@ -353,7 +353,7 @@ describe('TerminalAppearanceSection ghostty import wiring', () => {
     // Why: Warp import produces themes, so its button is rendered by the Dark
     // Theme section (next to the pickers) rather than the Typography header.
     const buttons = findButtons(element)
-    expect(buttons.some((button) => button.text === 'Import from Warp')).toBe(false)
+    expect(buttons.some((button) => button.text === 'Import themes from Warp')).toBe(false)
 
     const darkSection = findDarkTerminalThemeSection(element)
     expect(darkSection?.props.showWarpThemeImport).toBe(true)

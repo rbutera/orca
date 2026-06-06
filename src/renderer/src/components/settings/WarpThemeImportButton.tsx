@@ -17,7 +17,7 @@ export function WarpThemeImportButton({
       onClick={() => void warpThemes.handleClick()}
     >
       <WarpIcon className="size-4" />
-      Import from Warp
+      Import themes from Warp
     </Button>
   )
 }

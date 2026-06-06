@@ -1,6 +1,6 @@
 import React from 'react'
 
-// Why: the Warp brand mark labels the "Import from Warp" theme action. Keeping
+// Why: the Warp brand mark labels the "Import themes from Warp" action. Keeping
 // it as a currentColor glyph (like the other brand icons here) lets it inherit
 // button text color and stay theme-aware. Path from simple-icons.
 export function WarpIcon({ className }: { className?: string }): React.JSX.Element {
