@@ -4,12 +4,7 @@ import { buildAgentDraftLaunchPlan, buildAgentStartupPlan } from '@/lib/tui-agen
 import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
 import { isTuiAgentEnabled, pickTuiAgent } from '../../../shared/tui-agent-selection'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
-import {
-  CLIENT_PLATFORM,
-  getWorkspaceIntentName,
-  getWorkspaceSeedName,
-  isGitLabIssueUrl
-} from '@/lib/new-workspace'
+import { getWorkspaceIntentName, getWorkspaceSeedName, isGitLabIssueUrl } from '@/lib/new-workspace'
 import {
   getLaunchableWorkItemDraftContent,
   type LinkedWorkItemContext
@@ -32,6 +27,7 @@ import {
   resolveDirectPrStartPoint,
   resolveDirectSetupDecision
 } from '@/lib/launch-work-item-direct-preflight'
+import { resolveSourceControlLaunchPlatform } from '@/lib/source-control-launch-platform'
 
 export type LaunchableWorkItem = {
   title: string
@@ -83,6 +79,8 @@ export type LaunchWorkItemDirectArgs = {
   /** Controls whether pasted work-item content remains editable or starts the
    *  agent immediately after the TUI is ready. */
   promptDelivery?: 'draft' | 'submit-after-ready'
+  /** Shell platform for the host that will execute the startup command. */
+  launchPlatform?: NodeJS.Platform
 }
 
 function getDirectDraftContent(item: LaunchableWorkItem): string {
@@ -205,11 +203,19 @@ export async function launchWorkItemDirect(args: LaunchWorkItemDirectArgs): Prom
     const worktreePath = result.worktree.path
 
     const createdConnectionId = getConnectionId(worktreeId)
+    const launchConnectionId =
+      createdConnectionId === undefined ? repoConnectionId : createdConnectionId
+    const launchPlatform =
+      args.launchPlatform ??
+      resolveSourceControlLaunchPlatform({
+        connectionId: launchConnectionId,
+        worktreePath
+      })
     const latestStore = useAppStore.getState()
     if (agentOverride) {
       const detectedAgents =
-        typeof createdConnectionId === 'string'
-          ? await latestStore.ensureRemoteDetectedAgents(createdConnectionId)
+        typeof launchConnectionId === 'string'
+          ? await latestStore.ensureRemoteDetectedAgents(launchConnectionId)
           : await latestStore.ensureDetectedAgents()
       if (
         !detectedAgents.includes(agentOverride) ||
@@ -225,10 +231,10 @@ export async function launchWorkItemDirect(args: LaunchWorkItemDirectArgs): Prom
       effectiveAgent = agentOverride
     } else {
       const detectedAgents =
-        createdConnectionId === repoConnectionId
+        launchConnectionId === repoConnectionId
           ? await detectedAgentsPromise!
-          : typeof createdConnectionId === 'string'
-            ? await latestStore.ensureRemoteDetectedAgents(createdConnectionId)
+          : typeof launchConnectionId === 'string'
+            ? await latestStore.ensureRemoteDetectedAgents(launchConnectionId)
             : await latestStore.ensureDetectedAgents()
       const detectedIds = new Set(detectedAgents)
       effectiveAgent = pickTuiAgent(
@@ -277,7 +283,7 @@ export async function launchWorkItemDirect(args: LaunchWorkItemDirectArgs): Prom
             agent: effectiveAgent,
             draft: draftContent,
             cmdOverrides: settings?.agentCmdOverrides ?? {},
-            platform: CLIENT_PLATFORM,
+            platform: launchPlatform,
             agentArgs
           })
     if (draftLaunchPlan) {
@@ -294,7 +300,7 @@ export async function launchWorkItemDirect(args: LaunchWorkItemDirectArgs): Prom
         agent: effectiveAgent,
         prompt: '',
         cmdOverrides: settings?.agentCmdOverrides ?? {},
-        platform: CLIENT_PLATFORM,
+        platform: launchPlatform,
         agentArgs,
         allowEmptyPromptLaunch: true
       })
